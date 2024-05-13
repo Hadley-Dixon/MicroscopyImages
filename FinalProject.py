@@ -195,3 +195,119 @@ output = model(test_input)
 print(f'Output shape: {output.shape}')
 
 #%%
+
+# Model Training
+
+model = UNet()
+device = torch.device('cuda')
+model.to(device)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=.0005)
+loss_fun = torch.nn.BCEWithLogitsLoss()
+
+num_epochs = 20
+ACE_train = []
+ACE_val = []
+
+for ep in range(num_epochs):
+    print(f'ep is: {ep}')
+    # Optimize parameters
+    for x_batch, y_batch in dataloader_train:
+        x_batch = x_batch.to(device)
+        y_batch = y_batch.to(device)
+        
+        outputs = model(x_batch)
+        loss = loss_fun(outputs, y_batch)
+        model.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    with torch.no_grad():
+        # Evaluation - Training data
+        ace = 0
+        for x_batch, y_batch in dataloader_train:
+            x_batch = x_batch.to(device)
+            y_batch = y_batch.to(device)
+
+            outputs = model(x_batch)
+            loss = loss_fun(outputs, y_batch)
+            ace = ace + loss.item() * len(y_batch)
+
+        ace = ace / len(dataset_train)
+        ACE_train.append(ace)
+
+        print(f'Avg. cross-entropy (training): {ace}')
+
+        # Evaluation - Validation data
+        ace = 0
+        for x_batch, y_batch in dataloader_val:
+            x_batch = x_batch.to(device)
+            y_batch = y_batch.to(device)
+          
+            outputs = model(x_batch)
+            loss = loss_fun(outputs, y_batch)
+            ace = ace + loss.item() * len(y_batch)
+
+        ace = ace / len(dataset_val)
+        ACE_val.append(ace)
+        
+        print(f'Avg. cross-entropy (validation): {ace}')
+        
+#%%
+
+# Convergence Plots
+
+plt.figure()
+plt.plot(ACE_train, label = "training")
+plt.plot(ACE_val, label = "validation")
+plt.legend()
+plt.title("Binary Cross Entropy")
+plt.show()
+
+#%%
+
+# Submission
+
+import cv2
+
+class CellDataset_Test():
+  def __init__(self, df):
+    self.df = df
+
+  def __len__(self):
+    return len(self.df)
+
+  def __getitem__(self, i):
+    x = self.df[i] / 255.0
+    x = x.reshape((1, 128, 128))
+    x = torch.tensor(x, dtype=torch.float32)
+
+    return x
+
+y_pred_test = []
+counts = []
+
+X_test = npzfile_train['X']
+dataset_test = CellDataset_Test(X_test)
+dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle=False)
+
+for x_batch in dataloader_test:
+  x_batch = x_batch.to(device)
+
+  with torch.no_grad():
+    outputs = model(x_batch)
+    for img in outputs:
+        img = img.cpu().numpy()
+
+        img = (img > 0).astype("uint8")
+
+        if img.ndim == 3 and img.shape[0] == 1:
+                img = img.squeeze(0)
+        
+        num_labels, labels_im = cv2.connectedComponents(img)
+        num_components = num_labels - 1
+        counts.append(num_components)
+
+dct = {'index': [x for x in range(len(counts))], 'count': counts}
+df_submission = pd.DataFrame(dct)
+df_submission.to_csv('./FinalProject_submission.csv', index = False)
