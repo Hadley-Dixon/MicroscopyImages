@@ -47,7 +47,8 @@ class CellDataset():
     x = x.reshape((1, 128, 128))
     x = torch.tensor(x, dtype=torch.float32)
     
-    y = self.df[i]
+    y = self.mask[i]
+    y = y.reshape((1, 128, 128))
     y = torch.tensor(y, dtype=torch.float32)
 
     return x, y
