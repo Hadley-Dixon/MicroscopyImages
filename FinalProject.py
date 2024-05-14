@@ -17,22 +17,30 @@ import pandas as pd
 import sklearn as sk
 import sklearn.model_selection
 import torch
-import matplotlib.pyplot as plt
+from google.colab import drive
+import os
 import cv2
 
+drive.mount('/content/gdrive')
+os.chdir('/content/gdrive/MyDrive/Cells (1)')
 
-npzfile_train = np.load('/Users/hadleydixon/Desktop/MicroscopyImages/counting-cells-in-microscopy-images-2024/train_data.npz')
-npzfile_test = np.load("/Users/hadleydixon/Desktop/MicroscopyImages/counting-cells-in-microscopy-images-2024/test_images.npz")
-
-X_labeled = npzfile_train['X']
-y_labeled = npzfile_train['y']
+df_labeled = np.load('Copy of train_data.npz')
+df_test = np.load('Copy of test_images.npz')
+X_labeled = df_labeled['X']
+y_labeled = df_labeled['y']
+X_test = df_test['X']
 
 X_train, X_val, y_train, y_val = sk.model_selection.train_test_split(X_labeled, y_labeled, train_size=.8)
 
 # Image display (check)
 
-i = 0
-plt.imshow(X_train[i]/255 + .5*y_train[i], cmap='gray')
+plt.imshow(X_train[0], cmap = 'gray')
+plt.title('X Image')
+plt.show()
+
+plt.imshow(y_train[0], cmap = 'gray')
+plt.title('y Image')
+plt.show()
 
 #%%
 
@@ -45,17 +53,13 @@ class CellDataset():
     return len(self.df)
 
   def __getitem__(self, i):
-    x = self.df[i] / 255.0
-    x = x.reshape((1, 128, 128))
-    x = torch.tensor(x, dtype=torch.float32)
-    
+    x = self.df[i]
     y = self.mask[i]
-    y = y.reshape((1, 128, 128))
-    y = torch.tensor(y, dtype=torch.float32)
+
+    x = torch.tensor(x, dtype=torch.float32).unsqueeze(0) / 255.0
+    y = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
     return x, y
-
-#%%
 
 class CellDataset_Test():
   def __init__(self, df):
@@ -65,16 +69,29 @@ class CellDataset_Test():
     return len(self.df)
 
   def __getitem__(self, i):
-    x = self.df[i] / 255.0
-    x = x.reshape((1, 128, 128))
-    x = torch.tensor(x, dtype=torch.float32)
+    x = self.df[i]
+    x = torch.tensor(x, dtype=torch.float32).unsqueeze(0) / 255.0
 
     return x
 
 #%%
 
-# U-Net Architecture
-# Standard U-Net Architecture
+dataset_train = CellDataset(X_train, y_train)
+dataset_val = CellDataset(X_val, y_val)
+dataset_test = CellDataset_Test(X_test)
+
+dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle = True)
+dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=16, shuffle = False)
+dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle = False)
+
+# Dataloader (check)
+
+x_batch, y_batch = next(iter(dataloader_val))
+x_batch.shape
+
+#%%
+
+# U-Net Architecture --> move from collab
 
 class UNet(torch.nn.Module):
   def __init__(self):
@@ -198,24 +215,7 @@ class UNet(torch.nn.Module):
 
 #%%
 
-# Dimmentions (check)
-
-model = UNet()
-test_input = torch.randn(16, 1, 128, 128)
-output = model(test_input)
-print(f'Output shape: {output.shape}')
-
-#%%
-
-dataset_train = CellDataset(X_train, y_train)
-dataset_val = CellDataset(X_val, y_val)
-
-dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle=True)
-dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=16, shuffle=False)
-
-#%%
-
-# Model Training
+# Model Training --> move from collab!
 
 dataset_train = CellDataset(X_train, y_train)
 dataset_val = CellDataset(X_val, y_val)
@@ -229,6 +229,7 @@ model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=.0001)
 loss_fun = torch.nn.BCEWithLogitsLoss()
+sigmoid = torch.nn.Sigmoid()
 
 num_epochs = 50
 ACE_train = []
@@ -283,17 +284,18 @@ for ep in range(num_epochs):
 # Convergence Plots
 
 plt.figure()
-plt.plot(ACE_train, label = "training")
-plt.plot(ACE_val, label = "validation")
+plt.plot(ACE_train, label = "Training")
+plt.plot(ACE_val, label = "Validation")
 plt.legend()
-plt.title("Binary Cross Entropy")
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title("Binary Cross Entropy vs. Epoch")
 plt.show()
 
 #%%
 
-# Submission
+# Test Data --> move from collab!
 
-y_pred_test = []
 counts = []
 
 X_test = npzfile_train['X']
@@ -316,6 +318,10 @@ for x_batch in dataloader_test:
         num_labels, labels_im = cv2.connectedComponents(img)
         num_components = num_labels - 1
         counts.append(num_components)
+        
+#%%  
+
+# Submission
 
 dct = {'index': [x for x in range(len(counts))], 'count': counts}
 df_submission = pd.DataFrame(dct)
