@@ -30,7 +30,7 @@ X_labeled = df_labeled['X']
 y_labeled = df_labeled['y']
 X_test = df_test['X']
 
-X_train, X_val, y_train, y_val = sk.model_selection.train_test_split(X_labeled, y_labeled, train_size=.8)
+X_train, X_val, y_train, y_val = sk.model_selection.train_test_split(X_labeled, y_labeled, train_size = .8)
 
 # Image display (check)
 
@@ -56,8 +56,8 @@ class CellDataset():
     x = self.df[i]
     y = self.mask[i]
 
-    x = torch.tensor(x, dtype=torch.float32).unsqueeze(0) / 255.0
-    y = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
+    x = torch.tensor(x, dtype = torch.float32).unsqueeze(0) / 255.0
+    y = torch.tensor(y, dtype = torch.float32).unsqueeze(0)
 
     return x, y
 
@@ -70,7 +70,7 @@ class CellDataset_Test():
 
   def __getitem__(self, i):
     x = self.df[i]
-    x = torch.tensor(x, dtype=torch.float32).unsqueeze(0) / 255.0
+    x = torch.tensor(x, dtype = torch.float32).unsqueeze(0) / 255.0
 
     return x
 
@@ -80,9 +80,9 @@ dataset_train = CellDataset(X_train, y_train)
 dataset_val = CellDataset(X_val, y_val)
 dataset_test = CellDataset_Test(X_test)
 
-dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle = True)
-dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=16, shuffle = False)
-dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle = False)
+dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size = 16, shuffle = True)
+dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size = 16, shuffle = False)
+dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size = 16, shuffle = False)
 
 # Dataloader (check)
 
@@ -221,7 +221,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = UNet()
 model.to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=.0002)
+optimizer = torch.optim.Adam(model.parameters(), lr = .0002)
 loss_fun = torch.nn.BCEWithLogitsLoss()
 sigmoid = torch.nn.Sigmoid()
 
@@ -245,7 +245,7 @@ for ep in range(num_epochs):
 
     with torch.no_grad():
         
-        # Evaluation - Training data
+        # Evaluation - Training
         ace = 0
         for x_batch, y_batch in dataloader_train:
             x_batch = x_batch.to(device)
@@ -253,13 +253,13 @@ for ep in range(num_epochs):
 
             outputs = model(x_batch)
             loss = loss_fun(outputs, y_batch)
-            ace += loss.item() * x_batch.size(0)
+            ace = ace + loss.item() * x_batch.size(0)
 
         ACE = ace / len(dataloader_train.dataset)
         ACE_train.append(ACE)
         print(f'Average cross-entropy (training): {ACE}')
 
-        # Evaluation - Validation data
+        # Evaluation - Validation
         ace = 0
         for x_batch, y_batch in dataloader_val:
             x_batch = x_batch.to(device)
@@ -267,7 +267,7 @@ for ep in range(num_epochs):
 
             outputs = model(x_batch)
             loss = loss_fun(outputs, y_batch)
-            ace += loss.item() * x_batch.size(0)
+            ace = ace + loss.item() * x_batch.size(0)
 
         ACE = ace / len(dataloader_val.dataset)
         ACE_val.append(ACE)
