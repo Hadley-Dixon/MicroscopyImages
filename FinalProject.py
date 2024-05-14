@@ -215,28 +215,23 @@ class UNet(torch.nn.Module):
 
 #%%
 
-# Model Training --> move from collab!
+# Model Training
 
-dataset_train = CellDataset(X_train, y_train)
-dataset_val = CellDataset(X_val, y_val)
-
-dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=16, shuffle=True)
-dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=16, shuffle=False)
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = UNet()
-device = torch.device('cuda')
 model.to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=.0001)
+optimizer = torch.optim.Adam(model.parameters(), lr=.0002)
 loss_fun = torch.nn.BCEWithLogitsLoss()
 sigmoid = torch.nn.Sigmoid()
 
-num_epochs = 50
+num_epochs = 45
 ACE_train = []
 ACE_val = []
 
 for ep in range(num_epochs):
-    print(f'ep is: {ep}')
+    print(f'Ep: {ep}')
+
     # Optimize parameters
     for x_batch, y_batch in dataloader_train:
         x_batch = x_batch.to(device)
@@ -249,6 +244,7 @@ for ep in range(num_epochs):
         optimizer.step()
 
     with torch.no_grad():
+        
         # Evaluation - Training data
         ace = 0
         for x_batch, y_batch in dataloader_train:
@@ -257,12 +253,11 @@ for ep in range(num_epochs):
 
             outputs = model(x_batch)
             loss = loss_fun(outputs, y_batch)
-            ace = ace + loss.item() * len(y_batch)
+            ace += loss.item() * x_batch.size(0)
 
-        ace = ace / len(dataset_train)
-        ACE_train.append(ace)
-
-        print(f'Avg. cross-entropy (training): {ace}')
+        ACE = ace / len(dataloader_train.dataset)
+        ACE_train.append(ACE)
+        print(f'Average cross-entropy (training): {ACE}')
 
         # Evaluation - Validation data
         ace = 0
@@ -272,12 +267,11 @@ for ep in range(num_epochs):
 
             outputs = model(x_batch)
             loss = loss_fun(outputs, y_batch)
-            ace = ace + loss.item() * len(y_batch)
+            ace += loss.item() * x_batch.size(0)
 
-        ace = ace / len(dataset_val)
-        ACE_val.append(ace)
-
-        print(f'Avg. cross-entropy (validation): {ace}')
+        ACE = ace / len(dataloader_val.dataset)
+        ACE_val.append(ACE)
+        print(f'Average cross-entropy (validation): {ACE}')
         
 #%%
 
