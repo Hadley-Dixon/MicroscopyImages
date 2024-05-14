@@ -294,29 +294,23 @@ plt.show()
 
 #%%
 
-# Test Data --> move from collab!
+# Test Data
 
 counts = []
 
-X_test = npzfile_train['X']
-dataset_test = CellDataset_Test(X_test)
-dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=16, shuffle=False)
-
 for x_batch in dataloader_test:
-  x_batch = x_batch.to(device)
+    x_batch = x_batch.to(device)
+    outputs = model(x_batch) # Calculate predictions
+    outputs = sigmoid(outputs)
+    outputs_rounded = torch.round(outputs) # Round probabilities
 
-  with torch.no_grad():
-    outputs = model(x_batch)
-    for img in outputs:
-        img = img.cpu().numpy()
+    for i in range(outputs_rounded.shape[0]):
+        img = outputs_rounded[i]
+        img = img.squeeze().cpu().detach().numpy() # Coerce object type
+        img = img.astype(np.uint8)
 
-        img = (img > 0).astype("uint8")
-
-        if img.ndim == 3 and img.shape[0] == 1:
-                img = img.squeeze(0)
-
-        num_labels, labels_im = cv2.connectedComponents(img)
-        num_components = num_labels - 1
+        info = cv2.connectedComponents(img)
+        num_components = info[0]
         counts.append(num_components)
         
 #%%  
