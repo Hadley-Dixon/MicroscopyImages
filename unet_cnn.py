@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Final Project: Counting Cells in Microscopy Images
-MATH 373
+Counting Cells in Microscopy Images
 
 Created on Sun May 12 13:55:33 2024
 
@@ -327,8 +326,8 @@ for x_batch in dataloader_test:
         
 #%%  
 
-# Submission
+# Results
 
 dct = {'index': [x for x in range(len(counts))], 'count': counts}
-df_submission = pd.DataFrame(dct)
-df_submission.to_csv('./FinalProject_submission.csv', index = False)
+df_results = pd.DataFrame(dct)
+df_results.to_csv('./Final_results.csv', index = False)
